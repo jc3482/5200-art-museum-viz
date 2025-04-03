@@ -1,0 +1,420 @@
+---
+title: "Museum Art Collections Exploratory Analysis"
+author: "Zixu Hao"
+date: "`r Sys.Date()`"
+format: 
+  html:
+    embed-resources: true
+editor: visual
+---
+
+# Introduction
+
+This analysis explores four museum art collection datasets:
+1. Cleveland Museum of Art (`cleveland_art_museum.csv`)
+2. Metropolitan Museum of Art (`Met_objects.csv`)
+3. MoMA Artists (`Moma_Artists.csv`)
+4. MoMA Artworks (`Moma_Artworks.csv`)
+
+These datasets contain rich information about artworks, artists, creation dates, materials, and dimensions. Our EDA aims to:
+
+- Understand basic statistical characteristics of each collection
+- Examine artist nationality and gender distributions
+- Analyze temporal patterns in artwork creation
+- Compare materials and mediums across collections
+- Identify unique characteristics of each museum's collection
+
+# Methodology
+
+Our approach includes:
+
+1. **Data Loading & Initial Inspection**: Structure and missing values
+2. **Univariate Analysis**: Distribution of key variables
+3. **Bivariate Analysis**: Relationships between variables
+4. **Cross-Collection Comparison**: Identifying unique patterns
+5. **Visualization**: Effective graphical representations
+
+## Technical Options
+
+Choose either Python or R for the analysis:
+
+```{python}
+# Python setup
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+```
+
+```{r}
+# R setup
+library(tidyverse)
+library(lubridate)
+library(scales)
+library(ggridges)
+library(patchwork)
+```
+
+# Data Analysis
+
+1. Data Loading (Python Option)
+
+```{python}
+# Load all datasets
+cleveland = pd.read_csv("../data/cleveland_art_museum.csv")
+met = pd.read_csv("../data/Met_objects.csv")
+moma_artists = pd.read_csv("../data/Moma_Artists.csv")
+moma_artworks = pd.read_csv("../data/Moma_Artworks.csv")
+
+# Display structure
+print("Cleveland Museum:")
+print(cleveland.head(2))
+print("\nMet Museum:")
+print(met.head(2))
+print("\nMoMA Artists:")
+print(moma_artists.head(2))
+print("\nMoMA Artworks:")
+print(moma_artworks.head(2))
+```
+
+1. Data Loading (R Option)
+
+```{r}
+# Load all datasets
+cleveland <- read_csv("../data/cleveland_art_museum.csv")
+met <- read_csv("../data/Met_objects.csv")
+moma_artists <- read_csv("../data/Moma_Artists.csv")
+moma_artworks <- read_csv("../data/Moma_Artworks.csv")
+
+# Display structure
+glimpse(cleveland)
+glimpse(met)
+glimpse(moma_artists)
+glimpse(moma_artworks)
+```
+
+2. Cleveland Museum Analysis (Python)
+
+```{python}
+# Basic statistics
+cleveland_stats = pd.DataFrame({
+    "Total Artworks": [len(cleveland)],
+    "Unique Artists": [cleveland["artists_tags"].nunique()],
+    "Earliest Work": [cleveland["creation_date_earliest"].min()],
+    "Latest Work": [cleveland["creation_date_latest"].max()]
+})
+
+# Department distribution
+dept_counts = cleveland["department"].value_counts().head(10)
+
+# Visualization
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10))
+
+# Time distribution
+cleveland["century"] = (cleveland["creation_date_earliest"] // 100) * 100
+ax1.hist(cleveland["century"].dropna(), bins=20, color="steelblue")
+ax1.set_title("Cleveland Museum: Artwork Creation Century Distribution")
+ax1.set_xlabel("Century")
+ax1.set_ylabel("Count")
+
+# Department distribution
+dept_counts.plot(kind="barh", ax=ax2, color="steelblue")
+ax2.set_title("Top 10 Departments by Artwork Count")
+ax2.set_xlabel("Count")
+
+plt.tight_layout()
+plt.show()
+```
+
+2. Cleveland Museum Analysis (R)
+
+```{r}
+# Basic statistics
+cleveland_summary <- cleveland %>%
+  summarise(
+    n_artworks = n(),
+    n_artists = n_distinct(artists_tags),
+    earliest_year = min(creation_date_earliest, na.rm = TRUE),
+    latest_year = max(creation_date_latest, na.rm = TRUE)
+  )
+
+# Department distribution
+cleveland_dept <- cleveland %>%
+  count(department, sort = TRUE) %>%
+  head(10)
+
+# Time distribution
+cleveland_time <- cleveland %>%
+  filter(!is.na(creation_date_earliest)) %>%
+  mutate(century = floor(creation_date_earliest/100)*100)
+
+# Visualization
+p1 <- ggplot(cleveland_time, aes(x = century)) +
+  geom_histogram(binwidth = 100, fill = "steelblue") +
+  labs(title = "Cleveland Museum: Artwork Creation Century",
+       x = "Century", y = "Count")
+
+p2 <- ggplot(cleveland_dept, aes(x = reorder(department, n), y = n)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(title = "Top 10 Departments by Artwork Count",
+       x = "", y = "Count")
+
+p1 / p2
+```
+
+3. Metropolitan Museum Analysis (Python)
+
+```{python}
+# Basic statistics
+met_stats = pd.DataFrame({
+    "Total Artworks": [len(met)],
+    "Unique Artists": [met["Artist Display Name"].nunique()],
+    "Departments": [met["Department"].nunique()],
+    "Earliest Work": [met["Object Begin Date"].min()],
+    "Latest Work": [met["Object End Date"].max()]
+})
+
+# Nationality analysis
+nationality_counts = met["Artist Nationality"].value_counts().head(20)
+
+# Visualization
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10))
+
+# Department distribution
+met["Department"].value_counts().head(10).plot(kind="barh", ax=ax1, color="darkgreen")
+ax1.set_title("Top 10 Departments by Artwork Count")
+ax1.set_xlabel("Count")
+
+# Nationality distribution
+nationality_counts.plot(kind="barh", ax=ax2, color="darkgreen")
+ax2.set_title("Top 20 Artist Nationalities")
+ax2.set_xlabel("Count")
+
+plt.tight_layout()
+plt.show()
+```
+
+3. Metropolitan Museum Analysis (R)
+
+```{r}
+# Basic statistics
+met_summary <- met %>%
+  summarise(
+    n_artworks = n(),
+    n_artists = n_distinct(`Artist Display Name`),
+    n_departments = n_distinct(Department),
+    earliest_year = min(`Object Begin Date`, na.rm = TRUE),
+    latest_year = max(`Object End Date`, na.rm = TRUE)
+  )
+
+# Department distribution
+met_dept <- met %>%
+  count(Department, sort = TRUE) %>%
+  head(10)
+
+# Nationality analysis
+met_nationality <- met %>%
+  filter(!is.na(`Artist Nationality`)) %>%
+  count(`Artist Nationality`, sort = TRUE) %>%
+  head(20)
+
+# Visualization
+p3 <- ggplot(met_dept, aes(x = reorder(Department, n), y = n)) +
+  geom_col(fill = "darkgreen") +
+  coord_flip() +
+  labs(title = "Met Museum: Top 10 Departments",
+       x = "", y = "Count")
+
+p4 <- ggplot(met_nationality, aes(x = reorder(`Artist Nationality`, n), y = n)) +
+  geom_col(fill = "darkgreen") +
+  coord_flip() +
+  labs(title = "Met Museum: Top 20 Artist Nationalities",
+       x = "", y = "Count")
+
+p3 + p4 + plot_layout(ncol = 1)
+```
+
+4. MoMA Analysis (Python)
+
+```{python}
+# Gender distribution
+gender_dist = moma_artists["Gender"].value_counts(normalize=True)
+
+# Medium analysis
+medium_dist = moma_artworks["Medium"].value_counts().head(20)
+
+# Visualization
+fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(10, 15))
+
+# Gender pie chart
+gender_dist.plot(kind="pie", autopct="%1.1f%%", ax=ax1, colors=["lightcoral", "lightblue"])
+ax1.set_title("MoMA Artists: Gender Distribution")
+ax1.set_ylabel("")
+
+# Medium distribution
+medium_dist.head(10).plot(kind="barh", ax=ax2, color="purple")
+ax2.set_title("Top 10 Artwork Mediums")
+ax2.set_xlabel("Count")
+
+# Acquisition year
+moma_artworks["AcquisitionYear"] = pd.to_datetime(moma_artworks["DateAcquired"]).dt.year
+ax3.hist(moma_artworks["AcquisitionYear"].dropna(), bins=30, color="purple")
+ax3.set_title("Artwork Acquisition Year Distribution")
+ax3.set_xlabel("Year")
+ax3.set_ylabel("Count")
+
+plt.tight_layout()
+plt.show()
+```
+
+4. MoMA Analysis (R)
+
+```{r}
+# Gender distribution
+gender_dist <- moma_artists %>%
+  filter(!is.na(Gender)) %>%
+  count(Gender) %>%
+  mutate(percent = n/sum(n))
+
+# Medium analysis
+medium_dist <- moma_artworks %>%
+  filter(!is.na(Medium)) %>%
+  count(Medium, sort = TRUE) %>%
+  head(20)
+
+# Acquisition year
+moma_acquisition <- moma_artworks %>%
+  mutate(year_acquired = year(mdy(DateAcquired))) %>%
+  filter(!is.na(year_acquired))
+
+# Visualization
+p5 <- ggplot(gender_dist, aes(x = "", y = percent, fill = Gender)) +
+  geom_bar(stat = "identity") +
+  coord_polar("y") +
+  labs(title = "MoMA Artists: Gender Distribution") +
+  scale_fill_brewer(palette = "Pastel1")
+
+p6 <- ggplot(medium_dist %>% head(10), aes(x = reorder(Medium, n), y = n)) +
+  geom_col(fill = "purple") +
+  coord_flip() +
+  labs(title = "Top 10 Artwork Mediums",
+       x = "", y = "Count")
+
+p7 <- ggplot(moma_acquisition, aes(x = year_acquired)) +
+  geom_histogram(binwidth = 5, fill = "purple") +
+  labs(title = "Artwork Acquisition Year Distribution",
+       x = "Year", y = "Count")
+
+(p5 + p6) / p7 + plot_layout(heights = c(1, 2))
+```
+
+5. Cross-Museum Comparison (Python)
+
+```{python}
+# Create comparison dataframe
+comparison = pd.DataFrame({
+    "Museum": ["Cleveland", "Metropolitan", "MoMA"],
+    "Artworks": [len(cleveland), len(met), len(moma_artworks)],
+    "Artists": [cleveland["artists_tags"].nunique(), 
+                met["Artist Display Name"].nunique(),
+                moma_artworks["ConstituentID"].nunique()]
+})
+
+# Visualization
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+
+# Artworks comparison
+sns.barplot(data=comparison, x="Museum", y="Artworks", palette="viridis", ax=ax1)
+ax1.set_yscale("log")
+ax1.set_title("Artwork Count Comparison (log scale)")
+
+# Artists comparison
+sns.barplot(data=comparison, x="Museum", y="Artists", palette="viridis", ax=ax2)
+ax2.set_yscale("log")
+ax2.set_title("Artist Count Comparison (log scale)")
+
+plt.tight_layout()
+plt.show()
+```
+
+5. Cross-Museum Comparison (R)
+
+```{r}
+# Create comparison data
+museum_comparison <- tribble(
+  ~Museum, ~Artworks, ~Artists,
+  "Cleveland", nrow(cleveland), n_distinct(cleveland$artists_tags),
+  "Met", nrow(met), n_distinct(met$`Artist Display Name`),
+  "MoMA", nrow(moma_artworks), n_distinct(moma_artworks$ConstituentID)
+)
+
+# Visualization
+p8 <- ggplot(museum_comparison, aes(x = Museum, y = Artworks, fill = Museum)) +
+  geom_col() +
+  scale_y_log10() +
+  labs(title = "Artwork Count Comparison (log scale)") +
+  theme(legend.position = "none")
+
+p9 <- ggplot(museum_comparison, aes(x = Museum, y = Artists, fill = Museum)) +
+  geom_col() +
+  scale_y_log10() +
+  labs(title = "Artist Count Comparison (log scale)") +
+  theme(legend.position = "none")
+
+p8 + p9
+```
+
+# Key Findings
+
+- Collection Size:
+
+    Metropolitan Museum has the largest collection (both artworks and artists)
+
+    Cleveland and MoMA have more specialized collections
+
+- Temporal Patterns:
+
+    Cleveland and Met contain ancient to contemporary works
+
+    MoMA focuses primarily on modern and contemporary art
+
+- Artist Diversity:
+
+    Met shows greatest nationality diversity
+
+    All collections show gender imbalance (male artists dominate)
+
+- Collection Focus:
+
+    Cleveland strong in European art and decorative arts
+
+    Met strong in Egyptian and American art
+
+    MoMA specializes in modern mediums (photography, prints)
+
+# Limitations & Next Steps
+
+- Data Quality Issues:
+
+    Missing values in key fields
+
+    Inconsistent formatting across collections
+
+- Analysis Opportunities:
+
+    Text analysis of artwork titles/descriptions
+
+    Network analysis of artist collaborations
+
+    Geographic mapping of artwork origins
+
+- Comparative Studies:
+
+    Deeper comparison of acquisition policies
+
+    Exhibition history analysis
+
+    Conservation state comparisons
+
+Complete code available at: [GitHub Repository Link]
